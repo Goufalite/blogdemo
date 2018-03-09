@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<title>On 30th full moon facing NE while squatting</title>
+<style type='text/css'>
+.valid
+{
+	background-color:green;
+}
+.invalid
+{
+	background-color:indianred;
+}
+</style>
+<script type='text/javascript'>
+
+var times = [];
+var values = [];
+var lastval = -1;
+var lastchange = "i";
+var starttime = 0;
+var lasttime = (new Date()).getTime();
+var change = "i";
+
+var valid = [];
+for (i=0;i<4;i++)
+{
+	valid.push({isValid:false,text:"Init"});
+}
+function loaded()
+{
+	redraw();
+	if(window.DeviceMotionEvent) 
+	{
+		window.addEventListener("devicemotion", processMotion, false);
+		document.getElementById("res").innerHTML = "ok";
+		valid[3] = {isValid: false, text:"En attente de mouvement..."};
+		validate();
+		
+	} 
+	else 
+	{
+		valid[3] = {isValid: false, text:"Impossible de mesurer l'accélération !"};
+		validate();
+	}
+	
+	if (window.DeviceOrientationAbsoluteEvent)
+	{
+		// position plus précise, mais pas générique
+		window.addEventListener('deviceorientationabsolute', processOrientation, false);
+	}
+	else if (window.DeviceOrientationEvent)
+	{
+		window.addEventListener('deviceorientation', processOrientation, false);
+	}
+	else
+	{
+		valid[2] = {isValid: false, text:"Impossible de mesurer l'orientation !"};
+		validate();
+	}
+	
+	processDate();
+}
+
+
+function processOrientation(event)
+{
+	where = "";
+	
+	//l'angle est inversé sur mon téléphone
+	angle = (360 - event.alpha)%360;
+	valid[2].isValid = false;
+	if (angle < 78.75 || angle > 281.25)
+	{
+		where = " Nord";
+	}
+	else if (angle > 101.25 && angle < 258.75)
+	{
+		where = " Sud";
+	}
+	if (angle > 11.25 && angle < 168.75)
+	{
+		where += " Est";
+	}
+	else if (angle >191.25 && angle < 348.75)
+	{
+		where += " Ouest";
+	}
+	
+	if ( where == " Nord Est")
+	{
+		valid[2].isValid = true;
+	}
+	
+	valid[2].text = where.trim()+" ("+angle+")";
+	validate();
+	
+}
+
+function processDate()
+{
+	date = new Date();
+	valid[0].isValid = date.getDate()==30;
+	valid[0].text = "On est le "+date.getDate();
+	processMoon(date)
+	validate();
+	
+	// on vérifie si on n'a pas changé de jour
+	window.setTimeout(function() { processDate(); },600000);
+}
+
+function processMoon(mydate)
+{
+	date = mydate.getTime();
+	lastFullMoon = (new Date("2018-03-02 01:51")).getTime();
+	
+	cycle = 2551442.8768992; // 29.530588853 jours * 86400 secondes
+	ageOfMoon = (((date-lastFullMoon)/1000)%cycle)/cycle *100
+	
+	valid[1].isValid = false;
+	if (ageOfMoon >= 93.75 || ageOfMoon < 6.25)
+	{
+		valid[1].isValid = true;
+		valid[1].text = "[(())] Pleine lune !";
+	}
+	if (ageOfMoon >= 6.25 && ageOfMoon < 18.75)
+	{
+		valid[1].text = "[(() ] Lune gibbeuse décroissante";
+	}
+	if (ageOfMoon >= 18.75 && ageOfMoon < 31.25)
+	{
+		valid[1].text = "[((  ] Dernier quartier";
+	}
+	if (ageOfMoon >= 31.25 && ageOfMoon < 43.75)
+	{
+		valid[1].text = "[(   ] Dernier croissant";
+	}
+	if (ageOfMoon >= 43.75 && ageOfMoon < 56.25)
+	{
+		valid[1].text = "[    ] Nouvelle Lune";
+	}
+	if (ageOfMoon >= 56.25 && ageOfMoon < 68.75)
+	{
+		valid[1].text = "[   )] Premier croissant";
+	}
+	if (ageOfMoon >= 68.75 && ageOfMoon < 81.25)
+	{
+		valid[1].text = "[  ))] Premier quartier";
+	}
+	if (ageOfMoon >= 81.25 && ageOfMoon < 93.75)
+	{
+		valid[1].text = "[ ())] Lune gibbeuse croissante";
+	}
+	valid[1].text += " ("+ageOfMoon+")";
+}
+
+function validate()
+{
+	for (i = 0; i< 4;i++)
+	{
+		tr = document.getElementById("test"+i);
+		td = document.getElementById("val"+i);
+		tr.classList.remove("valid");
+		tr.classList.remove("invalid");
+		if (valid[i].isValid)
+		{
+			tr.classList.add("valid");
+		}
+		else
+		{
+			tr.classList.add("invalid");
+		}
+		td.innerHTML = valid[i].text;
+	}
+}
+
+function redraw()
+{
+	ct = document.getElementById("canvas");
+	ctx = ct.getContext("2d");
+	ct.width = ct.width;
+	ctx.fillStyle = "#DDDDDD";
+	ctx.fillRect(0,100,500,2);
+	ctx.fillRect(0,75,500,2);
+	ctx.fillRect(0,125,500,2);
+	starttime = (new Date()).getTime();
+}
+
+function processMotion(event)
+{
+	ct = document.getElementById("canvas");
+	ctx = ct.getContext("2d");
+	date = (new Date().getTime());
+	
+	newval = event.acceleration.y;
+	//newval = Math.cos((new Date()).getTime()/1000);
+	ctx.fillStyle = "#0000FF";
+	ctx.fillRect((date-starttime)/75,newval*20+100,2,2);
+	if ((date-starttime)/75 > 250)
+	{
+		redraw();
+	}
+	if (newval < -1 || newval > 1)
+	{
+		change = newval > lastval ? "i":"d";
+		lasttime = date;
+	}
+	
+	if (date-lasttime > 3000)
+	{
+		times = [lasttime];
+		times.push(date);
+		lasttime = date;
+		rendertable();
+	}
+	if (change != lastchange)
+	{
+		times.push(date);
+		if (times.length > 20)
+		{
+			times.shift();
+			
+		}
+		rendertable();
+	}
+	lastval = newval;
+	lastchange = change;
+	
+	//window.setTimeout(function() { process(null);}, 20);
+}
+
+function rendertable()
+{
+	moy1 = [];
+	totalmoy = 0;
+	d = document.getElementById("res");
+	d.innerHTML = "";
+	if (times.length > 1)
+	{
+		for (i = 1; i< times.length; i++)
+		{
+			diff = times[i]-times[i-1];
+			moy1.push(diff);
+			totalmoy += diff;
+		}
+		truemoy = totalmoy/moy1.length;
+		date = (new Date()).getTime();
+		d.innerHTML = truemoy;
+		if (truemoy >= 3000)
+		{
+			valid[3] = {isValid:false,text:"Bah alors ?"};
+		}
+		else if (truemoy > 1000)
+		{
+			valid[3] = {isValid:false,text:"Trop lent !"};
+		}
+		else if (truemoy < 300)
+		{
+			valid[3] = {isValid:true,text:"Continue comme ça !"};
+		}
+		else
+		{
+			valid[3] = {isValid:false,text:"Allez du nerf !"};
+		}
+		
+		validate();
+	}
+}
+
+</script>
+</head>
+<body onload='loaded();'>
+<canvas id='canvas' style='width:100%;height:60%;'></canvas>
+<div id='res'></div>
+<table border=1>
+<tr class='invalid' id='test0'><td>Le 30</td><td id='val0'></td></tr>
+<tr class='invalid' id='test1'><td>Pleine lune</td><td id='val1'></td></tr>
+<tr class='invalid' id='test2'><td>Face au N-E</td><td id='val2'></td></tr>
+<tr class='invalid' id='test3'><td>En faisant des squats</td><td id='val3'></td></tr>
+</table>
+</body>
+</html>
